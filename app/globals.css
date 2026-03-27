@@ -1,0 +1,193 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  @apply bg-bg-primary text-text-primary;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-bg-secondary;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-border rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-text-secondary;
+}
+
+/* Progress bar animations */
+@keyframes progressPulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.animate-progress-pulse {
+  animation: progressPulse 2s ease-in-out infinite;
+}
+
+/* Card hover effects */
+.card-hover {
+  @apply transition-all duration-200;
+}
+
+.card-hover:hover {
+  @apply bg-opacity-80 transform scale-[1.01];
+}
+
+/* Status badges */
+.status-not-started {
+  @apply bg-text-secondary/20 text-text-secondary;
+}
+
+.status-learning {
+  @apply bg-accent-yellow/20 text-accent-yellow;
+}
+
+.status-done {
+  @apply bg-accent-green/20 text-accent-green;
+}
+
+/* Confidence indicators */
+.confidence-low {
+  @apply text-accent-red;
+}
+
+.confidence-medium {
+  @apply text-accent-yellow;
+}
+
+.confidence-high {
+  @apply text-accent-green;
+}
+
+/* Navigation active state */
+.nav-active {
+  @apply bg-accent-blue/20 text-accent-blue border-l-2 border-accent-blue;
+}
+
+/* Button styles */
+.btn-primary {
+  @apply bg-accent-blue text-white px-4 py-2 rounded-lg hover:bg-accent-blue/80 transition-colors;
+}
+
+.btn-secondary {
+  @apply bg-bg-card text-text-primary px-4 py-2 rounded-lg hover:bg-bg-card/80 transition-colors border border-border;
+}
+
+.btn-danger {
+  @apply bg-accent-red text-white px-4 py-2 rounded-lg hover:bg-accent-red/80 transition-colors;
+}
+
+/* Form inputs */
+.input {
+  @apply bg-bg-secondary border border-border rounded-lg px-3 py-2 text-text-primary focus:outline-none focus:border-accent-blue transition-colors;
+}
+
+.select {
+  @apply bg-bg-secondary border border-border rounded-lg px-3 py-2 text-text-primary focus:outline-none focus:border-accent-blue transition-colors appearance-none cursor-pointer;
+}
+
+/* Modal overlay */
+.modal-overlay {
+  @apply fixed inset-0 bg-black/50 flex items-center justify-center z-50;
+}
+
+.modal-content {
+  @apply bg-bg-secondary rounded-xl p-6 max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto;
+}
+
+/* Accordion/Expandable sections */
+.expandable-header {
+  @apply cursor-pointer select-none;
+}
+
+/* Day type colors */
+.day-school {
+  @apply bg-accent-blue/20 text-accent-blue;
+}
+
+.day-weekend {
+  @apply bg-accent-green/20 text-accent-green;
+}
+
+.day-holiday {
+  @apply bg-accent-purple/20 text-accent-purple;
+}
+
+.day-half_day {
+  @apply bg-accent-cyan/20 text-accent-cyan;
+}
+
+.day-exam {
+  @apply bg-accent-red/20 text-accent-red;
+}
+
+.day-rest {
+  @apply bg-accent-pink/20 text-accent-pink;
+}
+
+.day-event {
+  @apply bg-accent-orange/20 text-accent-orange;
+}
+
+.day-buffer {
+  @apply bg-text-secondary/20 text-text-secondary;
+}
+
+/* Project type colors */
+.project-board {
+  @apply bg-accent-blue;
+}
+
+.project-competitive {
+  @apply bg-accent-purple;
+}
+
+.project-standardized {
+  @apply bg-accent-orange;
+}
+
+/* Notification styles */
+.notification-urgent {
+  @apply border-l-4 border-accent-red bg-accent-red/10;
+}
+
+.notification-warning {
+  @apply border-l-4 border-accent-yellow bg-accent-yellow/10;
+}
+
+.notification-info {
+  @apply border-l-4 border-accent-blue bg-accent-blue/10;
+}
+
+/* Tooltip */
+.tooltip {
+  @apply invisible opacity-0 absolute bg-bg-card text-text-primary text-sm px-2 py-1 rounded transition-all;
+}
+
+.tooltip-trigger:hover .tooltip {
+  @apply visible opacity-100;
+}
+
+/* Loading skeleton */
+.skeleton {
+  @apply bg-bg-card animate-pulse rounded;
+}
