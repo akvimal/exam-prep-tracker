@@ -7,6 +7,7 @@ import { useStore, useActiveProject, useSubjectAndChapter } from '../../../../li
 import { QuestionType, PracticeSessionInput, UploadedFile, ChapterReference, TopicStatus, Confidence, ActivityType, activityTypeInfo } from '../../../../lib/types';
 import { getSubjectQuestionTypes } from '../../../../data/question-patterns';
 import { getChapterQuestions } from '../../../../data/question-bank-physics';
+import { getChemistryChapterQuestions } from '../../../../data/question-bank-chemistry';
 import Breadcrumb from '../../../../components/Breadcrumb';
 import ChapterStats from '../../../../components/ChapterStats';
 import QuestionTypeCard from '../../../../components/QuestionTypeCard';
@@ -89,8 +90,12 @@ export default function ChapterDetailPage() {
 
   const questionTypes = getSubjectQuestionTypes(subjectId);
 
-  // Get questions from the question bank (only for Physics chapters currently)
-  const chapterQuestions = subjectId === 'physics' ? getChapterQuestions(chapterId) : [];
+  // Get questions from the question bank
+  const chapterQuestions = subjectId === 'physics'
+    ? getChapterQuestions(chapterId)
+    : subjectId === 'chemistry'
+      ? getChemistryChapterQuestions(chapterId)
+      : [];
 
   const handleOpenPracticeModal = (type: QuestionType) => {
     setSelectedQuestionType(type);
