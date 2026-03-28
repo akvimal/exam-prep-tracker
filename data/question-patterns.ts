@@ -81,6 +81,28 @@ export const subjectExamPatterns: Record<string, SubjectExamPattern> = {
       { type: 'case_study', count: 2, marksEach: 4, totalMarks: 8, description: 'Section E: Case-Based' },
     ],
   },
+  // SAT Exam Patterns (Digital SAT)
+  'sat-math': {
+    subjectId: 'sat-math',
+    subjectCode: 'SAT-M',
+    totalTheoryMarks: 800,
+    totalPracticalMarks: 0,
+    totalQuestions: 44,
+    sections: [
+      { type: 'sat_mcq', count: 33, marksEach: 1, totalMarks: 33, description: 'Multiple Choice (75%)' },
+      { type: 'sat_grid_in', count: 11, marksEach: 1, totalMarks: 11, description: 'Student-Produced Response (25%)' },
+    ],
+  },
+  'sat-verbal': {
+    subjectId: 'sat-verbal',
+    subjectCode: 'SAT-RW',
+    totalTheoryMarks: 800,
+    totalPracticalMarks: 0,
+    totalQuestions: 54,
+    sections: [
+      { type: 'sat_mcq', count: 54, marksEach: 1, totalMarks: 54, description: 'Multiple Choice (100%)' },
+    ],
+  },
 };
 
 // Unit-wise weightage based on PDF

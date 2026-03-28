@@ -1,12 +1,14 @@
 'use client';
 
-import { useStore } from '../lib/store';
+import { useStore, useActiveProject } from '../lib/store';
 import { getProjectProgress, getDaysUntil } from '../lib/types';
 import ProgressBar from '../components/ProgressBar';
 import NotificationCard from '../components/NotificationCard';
+import StudyOverview from '../components/StudyOverview';
 
 export default function Dashboard() {
   const { projects, notifications, markNotificationRead, dayPlans } = useStore();
+  const activeProject = useActiveProject();
 
   // Get today's date
   const today = new Date().toISOString().split('T')[0];
@@ -74,6 +76,16 @@ export default function Dashboard() {
               <p className="text-3xl font-bold text-accent-yellow">{learningTopics}</p>
             </div>
           </div>
+
+          {/* Study Hours Overview */}
+          {activeProject && (
+            <div className="bg-bg-secondary rounded-xl p-6 border border-border">
+              <h2 className="text-lg font-semibold text-text-primary mb-4">
+                {activeProject.icon} {activeProject.name} - Study Hours
+              </h2>
+              <StudyOverview project={activeProject} />
+            </div>
+          )}
 
           {/* Today's Tasks */}
           <div className="bg-bg-secondary rounded-xl p-6 border border-border">

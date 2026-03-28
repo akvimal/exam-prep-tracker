@@ -4,12 +4,14 @@ import './globals.css';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useStore, useActiveProject, useUnreadNotifications } from '../lib/store';
+import FloatingLogTime from '../components/FloatingLogTime';
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: '📊', allProjects: true },
   { href: '/projects', label: 'Projects', icon: '📚', allProjects: true },
   { href: '/syllabus', label: 'Syllabus', icon: '📖', allProjects: false },
   { href: '/progress', label: 'Progress', icon: '📈', allProjects: false },
+  { href: '/tests', label: 'Tests', icon: '📝', allProjects: false },
   { href: '/planner', label: 'Planner', icon: '📅', allProjects: false },
   { href: '/settings', label: 'Settings', icon: '⚙️', allProjects: true },
 ];
@@ -120,6 +122,7 @@ export default function RootLayout({
         <main className="ml-64 p-6 min-h-screen">
           {children}
         </main>
+        <FloatingLogTime />
       </body>
     </html>
   );

@@ -17,7 +17,11 @@ const typeColors: Record<string, string> = {
 
 export default function ProjectCard({ project, isActive, onClick }: ProjectCardProps) {
   const progress = getProjectProgress(project);
-  const daysLeft = getDaysUntil(project.examDate);
+  const daysToExam = getDaysUntil(project.examDate);
+  const daysToTarget = project.targetDate ? getDaysUntil(project.targetDate) : null;
+
+  // Use target date for countdown if set, otherwise use exam date
+  const daysLeft = daysToTarget !== null ? daysToTarget : daysToExam;
 
   let totalTopics = 0;
   let doneTopics = 0;
@@ -80,25 +84,36 @@ export default function ProjectCard({ project, isActive, onClick }: ProjectCardP
         </div>
       </div>
 
-      {/* Exam Date */}
-      <div className="mt-4 pt-4 border-t border-border flex justify-between items-center">
-        <span className="text-sm text-text-secondary">
-          Exam: {new Date(project.examDate).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-          })}
-        </span>
-        <span
-          className={`text-sm font-medium ${
-            daysLeft <= 7
-              ? 'text-accent-red'
-              : daysLeft <= 30
-              ? 'text-accent-yellow'
-              : 'text-accent-green'
-          }`}
-        >
-          {daysLeft <= 0 ? 'Exam passed' : `${daysLeft} days left`}
-        </span>
+      {/* Dates */}
+      <div className="mt-4 pt-4 border-t border-border">
+        <div className="flex justify-between items-center">
+          <div className="text-sm text-text-secondary">
+            {project.targetDate ? (
+              <>
+                <div>Target: {new Date(project.targetDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+                <div className="text-xs opacity-70">Exam: {new Date(project.examDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+              </>
+            ) : (
+              <span>Exam: {new Date(project.examDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+            )}
+          </div>
+          <div className="text-right">
+            <span
+              className={`text-sm font-medium ${
+                daysLeft <= 7
+                  ? 'text-accent-red'
+                  : daysLeft <= 30
+                  ? 'text-accent-yellow'
+                  : 'text-accent-green'
+              }`}
+            >
+              {daysLeft <= 0 ? (project.targetDate ? 'Target passed' : 'Exam passed') : `${daysLeft} days left`}
+            </span>
+            {project.targetDate && daysToExam > 0 && (
+              <div className="text-xs text-text-secondary">+{daysToExam - (daysToTarget || 0)} revision</div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

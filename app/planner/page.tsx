@@ -2,26 +2,95 @@
 
 import { useState } from 'react';
 import { useStore, useActiveProject } from '../../lib/store';
-import { DayType } from '../../lib/types';
+import { DayType, Project, getDaysUntil } from '../../lib/types';
 import DayTypeSelector, { DayTypeBadge } from '../../components/DayTypeSelector';
 
-const dayTypeHours: Record<DayType, number> = {
-  school: 4,
-  weekend: 8,
-  holiday: 10,
-  half_day: 6,
-  exam: 0,
-  rest: 0,
-  event: 2,
-  buffer: 4,
-};
-
 export default function PlannerPage() {
-  const { calendarDays, setCalendarDay, dayPlans, toggleTaskComplete, projects } = useStore();
+  const {
+    calendarDays,
+    setCalendarDay,
+    dayPlans,
+    toggleTaskComplete,
+    projects,
+    updateProjectDates,
+    dayConfigs,
+    updateDayConfigHours,
+    bulkSetCalendarDays,
+    resetToDefaultDays,
+  } = useStore();
   const activeProject = useActiveProject();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [showDayTypeModal, setShowDayTypeModal] = useState(false);
+
+  // Edit dates state
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [examDate, setExamDate] = useState('');
+  const [bufferWeeks, setBufferWeeks] = useState(4);
+  const [useBuffer, setUseBuffer] = useState(false);
+
+  // Bulk assignment state
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [bulkStartDate, setBulkStartDate] = useState('');
+  const [bulkEndDate, setBulkEndDate] = useState('');
+  const [bulkDayType, setBulkDayType] = useState<DayType>('holiday');
+
+  // Edit hours state
+  const [showHoursModal, setShowHoursModal] = useState(false);
+  const [editingDayType, setEditingDayType] = useState<DayType | null>(null);
+  const [editingHours, setEditingHours] = useState(0);
+
+  // Get hours for a day type from dayConfigs
+  const getDayTypeHours = (type: DayType): number => {
+    const config = dayConfigs.find(c => c.type === type);
+    return config?.hours ?? 0;
+  };
+
+  const openEditDates = (project: Project) => {
+    setEditingProject(project);
+    setExamDate(project.examDate);
+    setBufferWeeks(project.bufferWeeks || 4);
+    setUseBuffer(!!project.targetDate);
+  };
+
+  const handleSaveDates = () => {
+    if (!editingProject) return;
+    let finalTargetDate: string | undefined;
+    if (useBuffer && bufferWeeks > 0) {
+      const exam = new Date(examDate);
+      exam.setDate(exam.getDate() - bufferWeeks * 7);
+      finalTargetDate = exam.toISOString().split('T')[0];
+    }
+    updateProjectDates(editingProject.id, examDate, finalTargetDate, useBuffer ? bufferWeeks : undefined);
+    setEditingProject(null);
+  };
+
+  const openEditHours = (type: DayType) => {
+    setEditingDayType(type);
+    setEditingHours(getDayTypeHours(type));
+    setShowHoursModal(true);
+  };
+
+  const handleSaveHours = () => {
+    if (editingDayType) {
+      updateDayConfigHours(editingDayType, editingHours);
+    }
+    setShowHoursModal(false);
+    setEditingDayType(null);
+  };
+
+  const handleBulkAssign = () => {
+    if (bulkStartDate && bulkEndDate) {
+      bulkSetCalendarDays(bulkStartDate, bulkEndDate, bulkDayType);
+    }
+    setShowBulkModal(false);
+    setBulkStartDate('');
+    setBulkEndDate('');
+  };
+
+  const handleResetMonth = () => {
+    resetToDefaultDays(currentMonth.getMonth(), currentMonth.getFullYear());
+  };
 
   // Generate calendar days for current month
   const generateCalendarDays = () => {
@@ -32,32 +101,20 @@ export default function PlannerPage() {
     const startPadding = firstDay.getDay();
     const days: { date: string; isCurrentMonth: boolean }[] = [];
 
-    // Previous month padding
     for (let i = startPadding - 1; i >= 0; i--) {
       const date = new Date(year, month, -i);
-      days.push({
-        date: date.toISOString().split('T')[0],
-        isCurrentMonth: false,
-      });
+      days.push({ date: date.toISOString().split('T')[0], isCurrentMonth: false });
     }
 
-    // Current month days
     for (let day = 1; day <= lastDay.getDate(); day++) {
       const date = new Date(year, month, day);
-      days.push({
-        date: date.toISOString().split('T')[0],
-        isCurrentMonth: true,
-      });
+      days.push({ date: date.toISOString().split('T')[0], isCurrentMonth: true });
     }
 
-    // Next month padding
     const remaining = 42 - days.length;
     for (let i = 1; i <= remaining; i++) {
       const date = new Date(year, month + 1, i);
-      days.push({
-        date: date.toISOString().split('T')[0],
-        isCurrentMonth: false,
-      });
+      days.push({ date: date.toISOString().split('T')[0], isCurrentMonth: false });
     }
 
     return days;
@@ -66,8 +123,6 @@ export default function PlannerPage() {
   const getDayType = (date: string): DayType => {
     const saved = calendarDays.find((d) => d.date === date);
     if (saved) return saved.dayType;
-
-    // Default: weekend on Sat/Sun, school otherwise
     const dayOfWeek = new Date(date).getDay();
     return dayOfWeek === 0 || dayOfWeek === 6 ? 'weekend' : 'school';
   };
@@ -98,7 +153,7 @@ export default function PlannerPage() {
     .filter((d) => d.isCurrentMonth)
     .forEach((d) => {
       const type = getDayType(d.date);
-      monthStudyHours += dayTypeHours[type];
+      monthStudyHours += getDayTypeHours(type);
       if (type === 'exam') examDays++;
       if (type === 'rest') restDays++;
     });
@@ -165,8 +220,16 @@ export default function PlannerPage() {
             })}
           </div>
 
-          {/* Legend */}
+          {/* Quick Actions */}
           <div className="mt-6 pt-4 border-t border-border">
+            <div className="flex flex-wrap gap-2 mb-4">
+              <button onClick={() => setShowBulkModal(true)} className="btn-secondary text-xs py-1.5 px-3">
+                Set Date Range
+              </button>
+              <button onClick={handleResetMonth} className="btn-secondary text-xs py-1.5 px-3">
+                Reset Month to Default
+              </button>
+            </div>
             <p className="text-xs text-text-secondary mb-2">Click a date to change its type</p>
             <div className="flex flex-wrap gap-2">
               {(['school', 'weekend', 'holiday', 'half_day', 'exam', 'rest', 'event', 'buffer'] as DayType[]).map(
@@ -180,6 +243,52 @@ export default function PlannerPage() {
 
         {/* Sidebar */}
         <div className="space-y-6">
+          {/* Exam Dates */}
+          <div className="bg-bg-secondary rounded-xl p-6 border border-border">
+            <h3 className="text-lg font-semibold text-text-primary mb-4">Exam Dates</h3>
+            <div className="space-y-3">
+              {projects.map((project) => {
+                const daysToExam = getDaysUntil(project.examDate);
+                const daysToTarget = project.targetDate ? getDaysUntil(project.targetDate) : null;
+                const daysLeft = daysToTarget !== null ? daysToTarget : daysToExam;
+
+                return (
+                  <div key={project.id} className="p-3 bg-bg-card rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-text-primary flex items-center gap-2">
+                        {project.icon} {project.name}
+                      </span>
+                      <button
+                        onClick={() => openEditDates(project)}
+                        className="text-xs text-accent-blue hover:underline"
+                      >
+                        Edit
+                      </button>
+                    </div>
+                    <div className="text-xs text-text-secondary space-y-1">
+                      {project.targetDate && (
+                        <div className="flex justify-between">
+                          <span>Target</span>
+                          <span>{new Date(project.targetDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between">
+                        <span>Exam</span>
+                        <span>{new Date(project.examDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                      </div>
+                      <div className={`flex justify-between font-medium ${
+                        daysLeft <= 7 ? 'text-accent-red' : daysLeft <= 30 ? 'text-accent-yellow' : 'text-accent-green'
+                      }`}>
+                        <span>{project.targetDate ? 'To target' : 'To exam'}</span>
+                        <span>{daysLeft} days</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Month Stats */}
           <div className="bg-bg-secondary rounded-xl p-6 border border-border">
             <h3 className="text-lg font-semibold text-text-primary mb-4">This Month</h3>
@@ -196,6 +305,24 @@ export default function PlannerPage() {
                 <span className="text-text-secondary">Rest Days</span>
                 <span className="font-semibold text-accent-pink">{restDays}</span>
               </div>
+            </div>
+          </div>
+
+          {/* Day Hours Config */}
+          <div className="bg-bg-secondary rounded-xl p-6 border border-border">
+            <h3 className="text-lg font-semibold text-text-primary mb-4">Study Hours per Day</h3>
+            <div className="space-y-2 text-sm">
+              {dayConfigs.map((config) => (
+                <div key={config.type} className="flex justify-between items-center">
+                  <DayTypeBadge type={config.type} />
+                  <button
+                    onClick={() => openEditHours(config.type)}
+                    className="text-text-primary hover:text-accent-blue"
+                  >
+                    {config.hours}h
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -238,19 +365,6 @@ export default function PlannerPage() {
               <p className="text-text-secondary text-sm text-center py-4">No tasks for today</p>
             )}
           </div>
-
-          {/* Quick Actions */}
-          <div className="bg-bg-secondary rounded-xl p-6 border border-border">
-            <h3 className="text-lg font-semibold text-text-primary mb-4">Day Hours</h3>
-            <div className="space-y-2 text-sm">
-              {Object.entries(dayTypeHours).map(([type, hours]) => (
-                <div key={type} className="flex justify-between">
-                  <DayTypeBadge type={type as DayType} />
-                  <span className="text-text-secondary">{hours}h</span>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
 
@@ -268,6 +382,155 @@ export default function PlannerPage() {
             >
               Cancel
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Dates Modal */}
+      {editingProject && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setEditingProject(null)}>
+          <div className="bg-bg-secondary rounded-xl p-6 w-full max-w-md border border-border" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-semibold text-text-primary mb-4">
+              {editingProject.icon} {editingProject.name} - Edit Dates
+            </h2>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-text-secondary mb-1">Actual Exam Date</label>
+                <input
+                  type="date"
+                  value={examDate}
+                  onChange={(e) => setExamDate(e.target.value)}
+                  className="input w-full"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="useBuffer"
+                  checked={useBuffer}
+                  onChange={(e) => setUseBuffer(e.target.checked)}
+                  className="rounded border-border"
+                />
+                <label htmlFor="useBuffer" className="text-sm text-text-primary">
+                  Set revision buffer before exam
+                </label>
+              </div>
+
+              {useBuffer && (
+                <div>
+                  <label className="block text-sm text-text-secondary mb-1">Revision buffer (weeks)</label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="range"
+                      min="1"
+                      max="12"
+                      value={bufferWeeks}
+                      onChange={(e) => setBufferWeeks(Number(e.target.value))}
+                      className="flex-1"
+                    />
+                    <span className="text-text-primary font-medium w-16 text-right">{bufferWeeks}w</span>
+                  </div>
+                  <p className="text-xs text-text-secondary mt-2">
+                    Target: Finish by{' '}
+                    <span className="text-text-primary">
+                      {new Date(new Date(examDate).getTime() - bufferWeeks * 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </span>
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button onClick={() => setEditingProject(null)} className="btn-secondary py-2 px-4">Cancel</button>
+              <button onClick={handleSaveDates} className="btn-primary py-2 px-4">Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Date Range Modal */}
+      {showBulkModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowBulkModal(false)}>
+          <div className="bg-bg-secondary rounded-xl p-6 w-full max-w-md border border-border" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-semibold text-text-primary mb-4">Set Date Range</h2>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-text-secondary mb-1">Start Date</label>
+                <input
+                  type="date"
+                  value={bulkStartDate}
+                  onChange={(e) => setBulkStartDate(e.target.value)}
+                  className="input w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-text-secondary mb-1">End Date</label>
+                <input
+                  type="date"
+                  value={bulkEndDate}
+                  onChange={(e) => setBulkEndDate(e.target.value)}
+                  className="input w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-text-secondary mb-1">Day Type</label>
+                <select
+                  value={bulkDayType}
+                  onChange={(e) => setBulkDayType(e.target.value as DayType)}
+                  className="input w-full"
+                >
+                  <option value="holiday">Holiday</option>
+                  <option value="school">School Day</option>
+                  <option value="weekend">Weekend</option>
+                  <option value="half_day">Half Day</option>
+                  <option value="exam">Exam</option>
+                  <option value="rest">Rest Day</option>
+                  <option value="event">Event</option>
+                  <option value="buffer">Buffer</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button onClick={() => setShowBulkModal(false)} className="btn-secondary py-2 px-4">Cancel</button>
+              <button onClick={handleBulkAssign} className="btn-primary py-2 px-4">Apply</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Hours Modal */}
+      {showHoursModal && editingDayType && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowHoursModal(false)}>
+          <div className="bg-bg-secondary rounded-xl p-6 w-full max-w-sm border border-border" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-semibold text-text-primary mb-4">
+              Edit Hours - <DayTypeBadge type={editingDayType} />
+            </h2>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-text-secondary mb-1">Study Hours</label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="range"
+                    min="0"
+                    max="12"
+                    value={editingHours}
+                    onChange={(e) => setEditingHours(Number(e.target.value))}
+                    className="flex-1"
+                  />
+                  <span className="text-text-primary font-medium w-12 text-right">{editingHours}h</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button onClick={() => setShowHoursModal(false)} className="btn-secondary py-2 px-4">Cancel</button>
+              <button onClick={handleSaveHours} className="btn-primary py-2 px-4">Save</button>
+            </div>
           </div>
         </div>
       )}

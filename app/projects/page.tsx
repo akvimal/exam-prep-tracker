@@ -34,28 +34,10 @@ export default function ProjectsPage() {
           project to set it as active. The active project determines which syllabus and progress
           is shown in other pages.
         </p>
-        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-          <div className="bg-bg-card rounded-lg p-3">
-            <span className="inline-block w-3 h-3 rounded-full project-board mr-2"></span>
-            <span className="text-text-primary">Board Exams</span>
-            <p className="text-text-secondary text-xs mt-1">
-              School/University board examinations
-            </p>
-          </div>
-          <div className="bg-bg-card rounded-lg p-3">
-            <span className="inline-block w-3 h-3 rounded-full project-competitive mr-2"></span>
-            <span className="text-text-primary">Competitive</span>
-            <p className="text-text-secondary text-xs mt-1">
-              Entrance exams like JEE, NEET
-            </p>
-          </div>
-          <div className="bg-bg-card rounded-lg p-3">
-            <span className="inline-block w-3 h-3 rounded-full project-standardized mr-2"></span>
-            <span className="text-text-primary">Standardized</span>
-            <p className="text-text-secondary text-xs mt-1">
-              Tests like SAT, GRE, TOEFL
-            </p>
-          </div>
+        <div className="mt-4 p-3 bg-bg-card rounded-lg">
+          <p className="text-text-secondary text-sm">
+            <strong className="text-text-primary">Tip:</strong> Go to the Planner page to set exam dates and revision buffers.
+          </p>
         </div>
       </div>
     </div>

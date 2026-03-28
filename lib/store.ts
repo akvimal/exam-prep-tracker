@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { AppState, Project, DayConfig, CalendarDay, DayPlan, TestResult, Notification, TopicStatus, Confidence, QuestionType, ChapterContent, UploadedFile } from './types';
+import { AppState, DayConfig, TestResult, Notification, TopicStatus, Confidence, ChapterContent, UploadedFile, ActivityType, ActivityTimeLog, SubjectContent, ChapterReference, TestActionItem } from './types';
 import { initialProjects, defaultDayConfigs, initialNotifications } from '../data/initial-data';
 
 // Generate unique ID
@@ -86,6 +86,60 @@ export const useStore = create<AppState>()(
         };
         set((state) => ({
           testResults: [...state.testResults, newResult],
+        }));
+      },
+
+      updateTestResult: (testId: string, updates: Partial<Omit<TestResult, 'id'>>) => {
+        set((state) => ({
+          testResults: state.testResults.map((test) =>
+            test.id === testId ? { ...test, ...updates } : test
+          ),
+        }));
+      },
+
+      deleteTestResult: (testId: string) => {
+        set((state) => ({
+          testResults: state.testResults.filter((test) => test.id !== testId),
+        }));
+      },
+
+      addTestActionItem: (testId: string, item: Omit<TestActionItem, 'id' | 'createdAt'>) => {
+        const newItem: TestActionItem = {
+          ...item,
+          id: generateId(),
+          createdAt: new Date().toISOString(),
+        };
+        set((state) => ({
+          testResults: state.testResults.map((test) =>
+            test.id === testId
+              ? { ...test, actionItems: [...(test.actionItems || []), newItem] }
+              : test
+          ),
+        }));
+      },
+
+      toggleTestActionItem: (testId: string, itemId: string) => {
+        set((state) => ({
+          testResults: state.testResults.map((test) =>
+            test.id === testId
+              ? {
+                  ...test,
+                  actionItems: (test.actionItems || []).map((item) =>
+                    item.id === itemId ? { ...item, completed: !item.completed } : item
+                  ),
+                }
+              : test
+          ),
+        }));
+      },
+
+      removeTestActionItem: (testId: string, itemId: string) => {
+        set((state) => ({
+          testResults: state.testResults.map((test) =>
+            test.id === testId
+              ? { ...test, actionItems: (test.actionItems || []).filter((item) => item.id !== itemId) }
+              : test
+          ),
         }));
       },
 
@@ -329,6 +383,247 @@ export const useStore = create<AppState>()(
           }),
         }));
       },
+
+      addChapterReference: (projectId, subjectId, chapterId, ref) => {
+        const newRef: ChapterReference = {
+          ...ref,
+          id: generateId(),
+        };
+        set((state) => ({
+          projects: state.projects.map((project) => {
+            if (project.id !== projectId) return project;
+            return {
+              ...project,
+              subjects: project.subjects.map((subject) => {
+                if (subject.id !== subjectId) return subject;
+                return {
+                  ...subject,
+                  chapters: subject.chapters.map((chapter) => {
+                    if (chapter.id !== chapterId) return chapter;
+                    const existingRefs = chapter.content?.references || [];
+                    return {
+                      ...chapter,
+                      content: {
+                        ...chapter.content,
+                        references: [...existingRefs, newRef],
+                      },
+                    };
+                  }),
+                };
+              }),
+            };
+          }),
+        }));
+      },
+
+      removeChapterReference: (projectId, subjectId, chapterId, refId) => {
+        set((state) => ({
+          projects: state.projects.map((project) => {
+            if (project.id !== projectId) return project;
+            return {
+              ...project,
+              subjects: project.subjects.map((subject) => {
+                if (subject.id !== subjectId) return subject;
+                return {
+                  ...subject,
+                  chapters: subject.chapters.map((chapter) => {
+                    if (chapter.id !== chapterId) return chapter;
+                    const existingRefs = chapter.content?.references || [];
+                    return {
+                      ...chapter,
+                      content: {
+                        ...chapter.content,
+                        references: existingRefs.filter((r) => r.id !== refId),
+                      },
+                    };
+                  }),
+                };
+              }),
+            };
+          }),
+        }));
+      },
+
+      updateProjectDates: (projectId: string, examDate: string, targetDate?: string, bufferWeeks?: number) => {
+        set((state) => ({
+          projects: state.projects.map((project) => {
+            if (project.id !== projectId) return project;
+            return {
+              ...project,
+              examDate,
+              targetDate,
+              bufferWeeks,
+            };
+          }),
+        }));
+      },
+
+      updateDayConfigHours: (dayType, hours) => {
+        set((state) => ({
+          dayConfigs: state.dayConfigs.map((config) =>
+            config.type === dayType ? { ...config, hours } : config
+          ),
+        }));
+      },
+
+      bulkSetCalendarDays: (startDate, endDate, dayType) => {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const days: { date: string; dayType: typeof dayType }[] = [];
+
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+          days.push({
+            date: d.toISOString().split('T')[0],
+            dayType,
+          });
+        }
+
+        set((state) => {
+          const newCalendarDays = [...state.calendarDays];
+          days.forEach((day) => {
+            const existingIndex = newCalendarDays.findIndex((d) => d.date === day.date);
+            if (existingIndex >= 0) {
+              newCalendarDays[existingIndex] = day;
+            } else {
+              newCalendarDays.push(day);
+            }
+          });
+          return { calendarDays: newCalendarDays };
+        });
+      },
+
+      resetToDefaultDays: (month, year) => {
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        const days: { date: string; dayType: 'school' | 'weekend' }[] = [];
+
+        for (let d = new Date(firstDay); d <= lastDay; d.setDate(d.getDate() + 1)) {
+          const dayOfWeek = d.getDay();
+          days.push({
+            date: d.toISOString().split('T')[0],
+            dayType: dayOfWeek === 0 || dayOfWeek === 6 ? 'weekend' : 'school',
+          });
+        }
+
+        set((state) => {
+          // Remove existing days for this month, then add new defaults
+          const otherDays = state.calendarDays.filter((d) => {
+            const date = new Date(d.date);
+            return date.getMonth() !== month || date.getFullYear() !== year;
+          });
+          return { calendarDays: [...otherDays, ...days] };
+        });
+      },
+
+      logStudyTime: (projectId, subjectId, chapterId, topicId, minutes, activity) => {
+        set((state) => ({
+          projects: state.projects.map((project) => {
+            if (project.id !== projectId) return project;
+            return {
+              ...project,
+              subjects: project.subjects.map((subject) => {
+                if (subject.id !== subjectId) return subject;
+                return {
+                  ...subject,
+                  chapters: subject.chapters.map((chapter) => {
+                    if (chapter.id !== chapterId) return chapter;
+                    return {
+                      ...chapter,
+                      topics: chapter.topics.map((topic) => {
+                        if (topic.id !== topicId) return topic;
+                        const currentTimeByActivity: ActivityTimeLog = topic.timeByActivity || {
+                          study: 0,
+                          practice: 0,
+                          revision: 0,
+                          assessment: 0,
+                        };
+                        return {
+                          ...topic,
+                          timeSpent: (topic.timeSpent || 0) + minutes,
+                          timeByActivity: {
+                            ...currentTimeByActivity,
+                            [activity]: currentTimeByActivity[activity] + minutes,
+                          },
+                          lastRevised: new Date().toISOString().split('T')[0],
+                        };
+                      }),
+                    };
+                  }),
+                };
+              }),
+            };
+          }),
+        }));
+      },
+
+      updateSubjectContent: (projectId, subjectId, content) => {
+        set((state) => ({
+          projects: state.projects.map((project) => {
+            if (project.id !== projectId) return project;
+            return {
+              ...project,
+              subjects: project.subjects.map((subject) => {
+                if (subject.id !== subjectId) return subject;
+                return {
+                  ...subject,
+                  content: {
+                    ...subject.content,
+                    ...content,
+                  },
+                };
+              }),
+            };
+          }),
+        }));
+      },
+
+      addSubjectFile: (projectId, subjectId, file) => {
+        const newFile: UploadedFile = {
+          ...file,
+          id: generateId(),
+        };
+        set((state) => ({
+          projects: state.projects.map((project) => {
+            if (project.id !== projectId) return project;
+            return {
+              ...project,
+              subjects: project.subjects.map((subject) => {
+                if (subject.id !== subjectId) return subject;
+                const existingFiles = subject.content?.uploadedFiles || [];
+                return {
+                  ...subject,
+                  content: {
+                    ...subject.content,
+                    uploadedFiles: [...existingFiles, newFile],
+                  },
+                };
+              }),
+            };
+          }),
+        }));
+      },
+
+      removeSubjectFile: (projectId, subjectId, fileId) => {
+        set((state) => ({
+          projects: state.projects.map((project) => {
+            if (project.id !== projectId) return project;
+            return {
+              ...project,
+              subjects: project.subjects.map((subject) => {
+                if (subject.id !== subjectId) return subject;
+                const existingFiles = subject.content?.uploadedFiles || [];
+                return {
+                  ...subject,
+                  content: {
+                    ...subject.content,
+                    uploadedFiles: existingFiles.filter((f) => f.id !== fileId),
+                  },
+                };
+              }),
+            };
+          }),
+        }));
+      },
     }),
     {
       name: 'exam-prep-storage',
@@ -385,4 +680,18 @@ export const useSubjectAndChapter = (subjectId: string, chapterId: string) => {
   const chapter = subject?.chapters.find((c) => c.id === chapterId) || null;
 
   return { subject, chapter };
+};
+
+// Get test results for active project
+export const useProjectTests = () => {
+  const activeProject = useActiveProject();
+  const { testResults } = useStore();
+  if (!activeProject) return [];
+  return testResults.filter((t) => t.projectId === activeProject.id);
+};
+
+// Get a specific test by ID
+export const useTestById = (testId: string) => {
+  const { testResults } = useStore();
+  return testResults.find((t) => t.id === testId) || null;
 };

@@ -1,15 +1,14 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useActiveProject, useSubjectById } from '../../../lib/store';
 import { getChapterProgress, getSubjectProgress } from '../../../lib/types';
 import Breadcrumb from '../../../components/Breadcrumb';
 import ProgressBar from '../../../components/ProgressBar';
 
-export default function SubjectChaptersPage() {
+export default function SubjectDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const subjectId = params.subjectId as string;
 
   const activeProject = useActiveProject();
@@ -59,6 +58,17 @@ export default function SubjectChaptersPage() {
 
   const subjectColor = getSubjectColor(subject.name);
 
+  // Calculate topic stats
+  const totalTopics = subject.chapters.reduce((sum, ch) => sum + ch.topics.length, 0);
+  const completedTopics = subject.chapters.reduce(
+    (sum, ch) => sum + ch.topics.filter((t) => t.status === 'done').length,
+    0
+  );
+  const learningTopics = subject.chapters.reduce(
+    (sum, ch) => sum + ch.topics.filter((t) => t.status === 'learning').length,
+    0
+  );
+
   return (
     <div className="max-w-7xl mx-auto">
       {/* Breadcrumb */}
@@ -85,13 +95,30 @@ export default function SubjectChaptersPage() {
             </div>
           </div>
         </div>
+
+        {/* Topic Stats */}
+        <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-border">
+          <div className="text-center">
+            <p className="text-xl font-bold text-accent-green">{completedTopics}</p>
+            <p className="text-xs text-text-secondary">Completed</p>
+          </div>
+          <div className="text-center">
+            <p className="text-xl font-bold text-accent-yellow">{learningTopics}</p>
+            <p className="text-xs text-text-secondary">In Progress</p>
+          </div>
+          <div className="text-center">
+            <p className="text-xl font-bold text-text-secondary">{totalTopics - completedTopics - learningTopics}</p>
+            <p className="text-xs text-text-secondary">Not Started</p>
+          </div>
+        </div>
       </div>
 
       {/* Chapters List */}
       <div className="space-y-4">
-        {subject.chapters.map((chapter) => {
+        {subject.chapters.map((chapter, index) => {
           const chapterProgress = getChapterProgress(chapter);
-          const completedTopics = chapter.topics.filter((t) => t.status === 'done').length;
+          const chapterCompletedTopics = chapter.topics.filter((t) => t.status === 'done').length;
+          const chapterNumber = index + 1;
 
           return (
             <Link
@@ -100,19 +127,26 @@ export default function SubjectChaptersPage() {
               className="block bg-bg-secondary rounded-xl border border-border p-5 hover:bg-bg-card/30 transition-all hover:border-border/80 group"
             >
               <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="font-semibold text-text-primary group-hover:text-accent-blue transition-colors">
-                      {chapter.name}
-                    </h3>
-                    <span className={`text-xs px-2 py-1 rounded bg-${subjectColor}/20 text-${subjectColor}`}>
-                      {chapter.weightage} marks
-                    </span>
+                <div className="flex items-center gap-4">
+                  {/* Chapter Number */}
+                  <div className={`w-10 h-10 rounded-lg bg-${subjectColor}/20 flex items-center justify-center`}>
+                    <span className={`text-lg font-bold text-${subjectColor}`}>{chapterNumber}</span>
                   </div>
-                  <div className="flex items-center gap-4 text-sm text-text-secondary">
-                    <span>{completedTopics}/{chapter.topics.length} topics</span>
-                    <span>-</span>
-                    <span>{chapter.weightagePercent}% weightage</span>
+
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-1">
+                      <h3 className="font-semibold text-text-primary group-hover:text-accent-blue transition-colors">
+                        {chapter.name}
+                      </h3>
+                      <span className={`text-xs px-2 py-1 rounded bg-${subjectColor}/20 text-${subjectColor}`}>
+                        {chapter.weightage} marks
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm text-text-secondary">
+                      <span>{chapterCompletedTopics}/{chapter.topics.length} topics</span>
+                      <span>-</span>
+                      <span>{chapter.weightagePercent}% weightage</span>
+                    </div>
                   </div>
                 </div>
 
